@@ -1,0 +1,23 @@
+Prebuilt binary status
+======================
+
+This ChatGPT sandbox does not have rustc/cargo installed, so I could not compile native Rust binaries inside the sandbox.
+
+Included instead:
+
+- Full Rust source code.
+- Full Python prototype source code.
+- Linux x86_64 and Windows x86_64 build scripts.
+- GitHub Actions workflow that builds x86_64 Linux and Windows binaries automatically.
+
+To produce the binaries:
+
+Linux x86_64:
+  cd rust/media-control-bridge
+  cargo build --release
+
+Windows x86_64:
+  cd rust\media-control-bridge
+  cargo build --release --target x86_64-pc-windows-msvc
+
+The requested architecture is x86_64 only; all build scripts target x86_64.

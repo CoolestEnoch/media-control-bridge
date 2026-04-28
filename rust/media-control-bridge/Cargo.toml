@@ -1,0 +1,28 @@
+[package]
+name = "media-control-bridge"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "TCP protocol bridge between Linux MPRIS and Windows SMTC media controls"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "net", "io-util", "process", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+mpris-server = { version = "0.10", features = ["tokio"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.61", features = [
+    "Foundation",
+    "Media",
+    "Media_Control",
+    "Media_Playback",
+    "Media_Core",
+    "Storage_Streams"
+] }
