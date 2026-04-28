@@ -191,3 +191,8 @@ The Python version follows the same rule:
 python python/media_bridge.py          # warning + help
 python python/media_bridge.py --help   # help only
 ```
+
+
+### Windows `--target smtc` fallback
+
+On Windows, `serve --target smtc` first tries `Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager`. If that WinRT/GSMTC path fails with errors such as `0x80040154` (`REGDB_E_CLASSNOTREG`, class not registered), the server automatically falls back to synthetic multimedia keys for `play`, `pause`, `play_pause`, `next`, `previous`, and `stop`. The fallback behaves like pressing hardware media keys. Because Windows has no reliable global discrete Play-only/Pause-only multimedia key, `play` and `pause` become a Play/Pause toggle in fallback mode. `status` still requires GSMTC.

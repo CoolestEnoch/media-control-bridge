@@ -1,9 +1,29 @@
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 
 use crate::protocol::{MediaCommand, PlaybackState};
 
 #[cfg(target_os = "windows")]
 pub async fn control_current_session(command: MediaCommand) -> Result<Option<PlaybackState>> {
+    // First try the proper Windows GSMTC remote-control API. Some Windows environments
+    // (old builds, non-interactive sessions, stripped/server images, or broken WinRT
+    // registrations) can fail with 0x80040154 / REGDB_E_CLASSNOTREG. For media-control
+    // commands, fall back to synthetic multimedia keys so the controlled endpoint still
+    // works for the common "music is playing here" case.
+    match control_current_session_gsmtc(command.clone()).await {
+        Ok(state) => Ok(state),
+        Err(err) if can_fallback_to_media_key(&command) => {
+            eprintln!(
+                "warning: Windows GSMTC control failed ({err:#}); falling back to multimedia key"
+            );
+            send_windows_media_key(command).context("Windows multimedia-key fallback failed")?;
+            Ok(None)
+        }
+        Err(err) => Err(err),
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn control_current_session_gsmtc(command: MediaCommand) -> Result<Option<PlaybackState>> {
     use windows::Media::Control::{
         GlobalSystemMediaTransportControlsSessionManager,
         GlobalSystemMediaTransportControlsSessionPlaybackStatus,
@@ -55,6 +75,66 @@ pub async fn control_current_session(command: MediaCommand) -> Result<Option<Pla
 
             Ok(Some(PlaybackState { playback, title, artist, album }))
         }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn can_fallback_to_media_key(command: &MediaCommand) -> bool {
+    matches!(
+        command,
+        MediaCommand::Play
+            | MediaCommand::Pause
+            | MediaCommand::PlayPause
+            | MediaCommand::Stop
+            | MediaCommand::Next
+            | MediaCommand::Previous
+    )
+}
+
+#[cfg(target_os = "windows")]
+fn send_windows_media_key(command: MediaCommand) -> Result<()> {
+    // Use a tiny PowerShell P/Invoke shim instead of the WinRT media-control API. This
+    // avoids the 0x80040154 class-registration failure path and behaves like pressing
+    // the hardware media keys on the keyboard. VK codes:
+    //   0xB0 = VK_MEDIA_NEXT_TRACK
+    //   0xB1 = VK_MEDIA_PREV_TRACK
+    //   0xB2 = VK_MEDIA_STOP
+    //   0xB3 = VK_MEDIA_PLAY_PAUSE
+    // There is no reliable global discrete Play-only/Pause-only multimedia key, so both
+    // Play and Pause fall back to the Play/Pause toggle when GSMTC is unavailable.
+    let vk: u16 = match command {
+        MediaCommand::Play | MediaCommand::Pause | MediaCommand::PlayPause => 0xB3,
+        MediaCommand::Stop => 0xB2,
+        MediaCommand::Next => 0xB0,
+        MediaCommand::Previous => 0xB1,
+        MediaCommand::Status => return Err(anyhow!("status cannot be read via multimedia-key fallback")),
+    };
+
+    let ps = format!(
+        r#"
+$ErrorActionPreference = 'Stop'
+Add-Type -Namespace Mcb -Name Native -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo);
+'@
+[Mcb.Native]::keybd_event([byte]{vk}, [byte]0, 0, 0)
+[Mcb.Native]::keybd_event([byte]{vk}, [byte]0, 2, 0)
+"#
+    );
+
+    let status = std::process::Command::new("powershell.exe")
+        .arg("-NoProfile")
+        .arg("-ExecutionPolicy")
+        .arg("Bypass")
+        .arg("-Command")
+        .arg(ps)
+        .status()
+        .context("failed to launch powershell.exe for multimedia-key fallback")?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(anyhow!("powershell multimedia-key fallback exited with {status}"))
     }
 }
 
