@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use crate::protocol::{MediaCommand, PlaybackState};
 
@@ -60,7 +60,7 @@ pub async fn control_current_session(command: MediaCommand) -> Result<Option<Pla
 
 #[cfg(not(target_os = "windows"))]
 pub async fn control_current_session(_command: MediaCommand) -> Result<Option<PlaybackState>> {
-    Err(anyhow!("Windows SMTC/GSMTC target is only available on Windows"))
+    Err(anyhow::anyhow!("Windows SMTC/GSMTC target is only available on Windows"))
 }
 
 #[cfg(target_os = "windows")]
@@ -96,6 +96,10 @@ pub async fn run_smtc_client(connect: String, token: Option<String>, name: Strin
     let tx2 = tx.clone();
     let _registration = smtc.ButtonPressed(&TypedEventHandler::<_, SystemMediaTransportControlsButtonPressedEventArgs>::new(
         move |_sender, args| {
+            let Some(args) = args.as_ref() else {
+                return Ok(());
+            };
+
             let cmd = match args.Button()? {
                 SystemMediaTransportControlsButton::Play => MediaCommand::Play,
                 SystemMediaTransportControlsButton::Pause => MediaCommand::Pause,
@@ -122,5 +126,5 @@ pub async fn run_smtc_client(connect: String, token: Option<String>, name: Strin
 
 #[cfg(not(target_os = "windows"))]
 pub async fn run_smtc_client(_connect: String, _token: Option<String>, _name: String) -> Result<()> {
-    Err(anyhow!("smtc-client is only implemented on Windows"))
+    Err(anyhow::anyhow!("smtc-client is only implemented on Windows"))
 }

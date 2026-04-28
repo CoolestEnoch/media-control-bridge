@@ -1,12 +1,12 @@
-use anyhow::{anyhow, Result};
-use tokio::sync::mpsc;
-
-use crate::net::send_command;
-use crate::protocol::MediaCommand;
+use anyhow::Result;
 
 #[cfg(target_os = "linux")]
 pub async fn run_mpris_client(connect: String, token: Option<String>, name: String) -> Result<()> {
     use mpris_server::Player;
+    use tokio::sync::mpsc;
+
+    use crate::net::send_command;
+    use crate::protocol::MediaCommand;
 
     let bus_name = format!("rs.mediabridge.{}", sanitize_bus_part(&name));
     let player = Player::builder(&bus_name)
@@ -85,7 +85,7 @@ pub async fn run_mpris_client(connect: String, token: Option<String>, name: Stri
 
 #[cfg(not(target_os = "linux"))]
 pub async fn run_mpris_client(_connect: String, _token: Option<String>, _name: String) -> Result<()> {
-    Err(anyhow!("mpris-client is only implemented on Linux"))
+    Err(anyhow::anyhow!("mpris-client is only implemented on Linux"))
 }
 
 fn sanitize_bus_part(input: &str) -> String {
