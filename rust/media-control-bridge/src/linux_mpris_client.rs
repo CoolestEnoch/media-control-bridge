@@ -66,8 +66,7 @@ pub async fn run_mpris_client(connect: String, token: Option<String>, name: Stri
 
     loop {
         tokio::select! {
-            result = &mut run_fut => {
-                result?;
+            _ = &mut run_fut => {
                 return Ok(());
             }
             maybe_cmd = rx.recv() => {

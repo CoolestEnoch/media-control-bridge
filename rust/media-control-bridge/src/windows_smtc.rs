@@ -96,19 +96,15 @@ pub async fn run_smtc_client(connect: String, token: Option<String>, name: Strin
     let tx2 = tx.clone();
     let _registration = smtc.ButtonPressed(&TypedEventHandler::<_, SystemMediaTransportControlsButtonPressedEventArgs>::new(
         move |_sender, args| {
-            if let Some(args) = args {
-                let cmd = match args.Button()? {
-                    SystemMediaTransportControlsButton::Play => Some(MediaCommand::Play),
-                    SystemMediaTransportControlsButton::Pause => Some(MediaCommand::Pause),
-                    SystemMediaTransportControlsButton::Stop => Some(MediaCommand::Stop),
-                    SystemMediaTransportControlsButton::Next => Some(MediaCommand::Next),
-                    SystemMediaTransportControlsButton::Previous => Some(MediaCommand::Previous),
-                    _ => Some(MediaCommand::PlayPause),
-                };
-                if let Some(cmd) = cmd {
-                    let _ = tx2.send(cmd);
-                }
-            }
+            let cmd = match args.Button()? {
+                SystemMediaTransportControlsButton::Play => MediaCommand::Play,
+                SystemMediaTransportControlsButton::Pause => MediaCommand::Pause,
+                SystemMediaTransportControlsButton::Stop => MediaCommand::Stop,
+                SystemMediaTransportControlsButton::Next => MediaCommand::Next,
+                SystemMediaTransportControlsButton::Previous => MediaCommand::Previous,
+                _ => MediaCommand::PlayPause,
+            };
+            let _ = tx2.send(cmd);
             Ok(())
         },
     ))?;

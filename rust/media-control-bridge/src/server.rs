@@ -59,9 +59,9 @@ async fn handle_conn(stream: TcpStream, token: Arc<Option<String>>, target: Arc<
     Ok(())
 }
 
-fn authorized(expected: Option<&String>, got: Option<&str>) -> bool {
+fn authorized(expected: Option<&str>, got: Option<&str>) -> bool {
     match expected {
         None => true,
-        Some(expected) => got == Some(expected.as_str()),
+        Some(expected) => got == Some(expected),
     }
 }
